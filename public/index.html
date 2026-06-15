@@ -1,0 +1,867 @@
+<!DOCTYPE html>
+<html lang="en" dir="ltr">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
+<title>World Cup Leaderboard</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Tajawal:wght@300;400;500;700;800;900&display=swap" rel="stylesheet">
+<style>
+  *, *::before, *::after { box-sizing:border-box; margin:0; padding:0; }
+
+  :root {
+    --bg-deep:    #070b14;
+    --bg-card:    #0f1625;
+    --bg-card2:   #141d30;
+    --grass:      #1a472a;
+    --grass-lite: #2d6a42;
+    --gold:       #f5c518;
+    --gold-glow:  rgba(245,197,24,0.35);
+    --silver:     #a8b2c8;
+    --accent:     #00d4ff;
+    --danger:     #ff4560;
+    --warn:       #ff9500;
+    --text-main:  #e8eaf0;
+    --text-muted: #6b7894;
+    --border:     rgba(255,255,255,0.06);
+    --radius:     16px;
+    --radius-sm:  10px;
+  }
+
+  html, body { min-height:100%; background:var(--bg-deep); font-family:'Tajawal',sans-serif; color:var(--text-main); overflow-x:hidden; }
+
+  body::before {
+    content:''; position:fixed; inset:0;
+    background:
+      radial-gradient(ellipse 80% 50% at 50% 0%,  rgba(26,71,42,0.45)   0%, transparent 70%),
+      radial-gradient(ellipse 60% 40% at 80% 100%, rgba(0,120,200,0.15)  0%, transparent 60%),
+      radial-gradient(ellipse 50% 30% at 20% 80%,  rgba(245,197,24,0.07) 0%, transparent 60%);
+    pointer-events:none; z-index:0;
+  }
+  body > * { position:relative; z-index:1; }
+
+  /* ── MODE BANNER ── */
+  .mode-banner {
+    text-align:center; font-size:12px; font-weight:600;
+    padding:6px 16px; letter-spacing:0.3px;
+    display:flex; align-items:center; justify-content:center; gap:7px;
+  }
+  .mode-banner.offline { background:rgba(255,149,0,0.12); color:var(--warn); border-bottom:1px solid rgba(255,149,0,0.2); }
+  .mode-banner.online  { background:rgba(26,71,42,0.2);   color:#4caf85;     border-bottom:1px solid rgba(76,175,133,0.15); }
+  .mode-dot { width:6px; height:6px; border-radius:50%; flex-shrink:0; }
+  .mode-banner.offline .mode-dot { background:var(--warn); }
+  .mode-banner.online  .mode-dot { background:#4caf85; animation:syncPulse 2s ease-in-out infinite; }
+
+  /* ── HEADER ── */
+  header { text-align:center; padding:24px 20px 14px; }
+  .trophy-icon { font-size:48px; display:block; filter:drop-shadow(0 0 20px var(--gold-glow)); animation:floatTrophy 3s ease-in-out infinite; }
+  @keyframes floatTrophy { 0%,100%{transform:translateY(0)} 50%{transform:translateY(-6px)} }
+  .app-title { font-size:clamp(22px,6vw,32px); font-weight:900; margin-top:10px;
+    background:linear-gradient(135deg,var(--gold) 0%,#fff8d0 50%,var(--gold) 100%);
+    -webkit-background-clip:text; -webkit-text-fill-color:transparent; background-clip:text; line-height:1.2; }
+  .app-subtitle { font-size:13px; color:var(--text-muted); margin-top:5px; }
+  .scoreboard-line { height:2px; background:linear-gradient(90deg,transparent,var(--grass-lite),var(--gold),var(--grass-lite),transparent); margin:14px 0 0; border-radius:99px; }
+
+  /* ── LANG TOGGLE ── */
+  .header-controls { display:flex; align-items:center; justify-content:center; gap:10px; margin-top:12px; }
+  .lang-toggle { display:inline-flex; align-items:center; background:var(--bg-card2); border:1px solid var(--border); border-radius:50px; padding:3px; gap:2px; }
+  .lang-btn { padding:6px 16px; border-radius:50px; border:none; font-family:'Tajawal',sans-serif; font-size:13px; font-weight:700; cursor:pointer; transition:background 0.2s,color 0.2s; background:transparent; color:var(--text-muted); }
+  .lang-btn.active { background:var(--grass-lite); color:#fff; }
+
+  /* sync dot in header (online mode) */
+  .sync-bar { display:flex; align-items:center; justify-content:center; gap:7px; font-size:11px; color:var(--text-muted); margin-top:4px; min-height:20px; }
+  .sync-dot { width:6px; height:6px; border-radius:50%; flex-shrink:0; }
+  .sync-dot.ok      { background:var(--grass-lite); animation:syncPulse 2.5s ease-in-out infinite; }
+  .sync-dot.syncing { background:var(--gold); }
+  .sync-dot.error   { background:var(--danger); }
+  @keyframes syncPulse { 0%,100%{opacity:1} 50%{opacity:0.4} }
+
+  /* ── MAIN ── */
+  main { max-width:540px; margin:0 auto; padding:0 14px 120px; }
+
+  /* ── TOOLBAR ── */
+  .toolbar { display:flex; gap:8px; padding:10px 0 4px; }
+  html[dir="ltr"] .toolbar { justify-content:flex-end; }
+  html[dir="rtl"] .toolbar { justify-content:flex-start; }
+  .btn-screenshot { display:flex; align-items:center; gap:7px; background:rgba(245,197,24,0.12); border:1px solid rgba(245,197,24,0.25); color:var(--gold); border-radius:50px; padding:9px 18px; font-family:'Tajawal',sans-serif; font-size:13px; font-weight:700; cursor:pointer; transition:background 0.15s,transform 0.12s; white-space:nowrap; }
+  .btn-screenshot:hover  { background:rgba(245,197,24,0.2); }
+  .btn-screenshot:active { transform:scale(0.95); }
+  .btn-undo { display:flex; align-items:center; gap:7px; background:rgba(0,212,255,0.08); border:1px solid rgba(0,212,255,0.2); color:var(--accent); border-radius:50px; padding:9px 18px; font-family:'Tajawal',sans-serif; font-size:13px; font-weight:700; cursor:pointer; transition:background 0.15s,transform 0.12s,opacity 0.2s; white-space:nowrap; }
+  .btn-undo:hover  { background:rgba(0,212,255,0.15); }
+  .btn-undo:active { transform:scale(0.95); }
+  .btn-undo:disabled { opacity:0.25; cursor:not-allowed; transform:none; }
+  .toast-undo { margin-inline-start:10px; color:var(--accent); font-weight:800; cursor:pointer; text-decoration:underline; text-underline-offset:2px; }
+
+  /* ── COLUMN LABELS ── */
+  .col-labels { display:grid; grid-template-columns:44px 1fr 88px 88px; gap:8px; align-items:center; padding:8px 16px; font-size:11px; font-weight:700; color:var(--text-muted); text-transform:uppercase; letter-spacing:1px; }
+  .col-labels .lbl-pts, .col-labels .lbl-guess { text-align:center; }
+
+  /* ── PLAYER CARD ── */
+  .player-card { background:var(--bg-card); border:1px solid var(--border); border-radius:var(--radius); margin-bottom:10px; overflow:hidden; position:relative; transition:box-shadow 0.3s; }
+  .player-card.rank-1 { border-color:rgba(245,197,24,0.4); background:linear-gradient(135deg,#1a160a 0%,var(--bg-card) 60%); box-shadow:0 0 30px rgba(245,197,24,0.12),0 4px 20px rgba(0,0,0,0.4); }
+  .player-card.rank-2 { border-color:rgba(168,178,200,0.3); box-shadow:0 4px 16px rgba(0,0,0,0.3); }
+  .player-card.rank-3 { border-color:rgba(205,127,50,0.3);  box-shadow:0 4px 16px rgba(0,0,0,0.3); }
+  .player-card.rank-1::before { content:''; position:absolute; inset:0; background:linear-gradient(105deg,transparent 40%,rgba(245,197,24,0.04) 50%,transparent 60%); animation:shimmer 3s ease-in-out infinite; pointer-events:none; }
+  @keyframes shimmer { 0%,100%{opacity:0} 50%{opacity:1} }
+  .player-card.animate-in { animation:slideInCard 0.3s ease both; }
+  @keyframes slideInCard { from{opacity:0;transform:translateY(14px)} to{opacity:1;transform:translateY(0)} }
+
+  .card-main-row { display:grid; grid-template-columns:44px 1fr 88px 88px; gap:8px; align-items:center; padding:14px 16px; cursor:pointer; }
+
+  /* ── RANK BADGE ── */
+  .rank-badge { width:36px; height:36px; border-radius:50%; display:flex; align-items:center; justify-content:center; font-size:14px; font-weight:900; flex-shrink:0; }
+  .rank-badge.r1 { background:linear-gradient(135deg,var(--gold),#b8920f); color:#000; box-shadow:0 0 16px var(--gold-glow); }
+  .rank-badge.r2 { background:linear-gradient(135deg,#c0cad8,#7a8499); color:#000; }
+  .rank-badge.r3 { background:linear-gradient(135deg,#e0a060,#9a5820); color:#fff; }
+  .rank-badge.rN { background:var(--bg-card2); color:var(--text-muted); border:1px solid var(--border); }
+
+  .player-name { font-size:17px; font-weight:700; color:var(--text-main); word-break:break-word; line-height:1.3; }
+  .player-card.rank-1 .player-name { color:var(--gold); }
+
+  /* ── STAT CELL ── */
+  .stat-cell { display:flex; flex-direction:column; align-items:center; gap:5px; }
+  .stat-value { font-size:20px; font-weight:800; line-height:1; min-width:32px; text-align:center; padding:3px 6px; border-radius:8px; cursor:pointer; transition:background 0.15s; border:1px solid transparent; }
+  .stat-value:hover { background:rgba(255,255,255,0.07); }
+  .stat-cell.points  .stat-value { color:var(--gold); }
+  .stat-cell.guesses .stat-value { color:var(--accent); }
+  .stat-input { font-family:'Tajawal',sans-serif; font-size:20px; font-weight:800; width:54px; text-align:center; background:var(--bg-deep); border:1px solid var(--gold); border-radius:8px; color:var(--gold); padding:2px 4px; outline:none; display:none; }
+  .stat-cell.guesses .stat-input { border-color:var(--accent); color:var(--accent); }
+  .stat-controls { display:flex; gap:5px; align-items:center; }
+  .btn-delta { width:26px; height:26px; border-radius:8px; border:none; cursor:pointer; font-size:16px; font-weight:900; display:flex; align-items:center; justify-content:center; transition:transform 0.12s; line-height:1; flex-shrink:0; }
+  .btn-delta:active { transform:scale(0.85); }
+  .btn-plus  { background:rgba(0,212,255,0.15); color:var(--accent); }
+  .btn-minus { background:rgba(255,69,96,0.15);  color:var(--danger); }
+
+  /* ── CARD ACTIONS ── */
+  .card-actions { display:none; gap:8px; padding:0 16px 12px; }
+  .player-card.expanded .card-actions { display:flex; }
+  .btn-edit,.btn-delete { flex:1; padding:8px; border-radius:var(--radius-sm); border:none; font-family:'Tajawal',sans-serif; font-size:13px; font-weight:600; cursor:pointer; transition:background 0.15s,transform 0.12s; }
+  .btn-edit   { background:rgba(255,255,255,0.07); color:var(--text-main); }
+  .btn-delete { background:rgba(255,69,96,0.1);    color:var(--danger); }
+  .btn-edit:active,.btn-delete:active { transform:scale(0.96); }
+
+  /* ── EMPTY STATE ── */
+  .empty-state { text-align:center; padding:60px 20px; color:var(--text-muted); }
+  .empty-icon  { font-size:52px; display:block; margin-bottom:14px; opacity:0.6; }
+  .empty-title { font-size:18px; font-weight:700; margin-bottom:8px; color:var(--silver); }
+  .empty-body  { font-size:14px; line-height:1.7; }
+
+  /* ── FAB ── */
+  .fab { position:fixed; bottom:28px; left:50%; transform:translateX(-50%); background:linear-gradient(135deg,var(--grass-lite),var(--grass)); color:#fff; border:none; border-radius:50px; padding:16px 32px; font-family:'Tajawal',sans-serif; font-size:16px; font-weight:700; cursor:pointer; box-shadow:0 8px 32px rgba(26,71,42,0.6),0 2px 8px rgba(0,0,0,0.4); display:flex; align-items:center; gap:10px; transition:transform 0.15s,box-shadow 0.15s; z-index:100; white-space:nowrap; }
+  .fab:active { transform:translateX(-50%) scale(0.95); }
+
+  /* ── MODAL ── */
+  .modal-overlay { position:fixed; inset:0; background:rgba(0,0,0,0.75); backdrop-filter:blur(6px); z-index:200; display:flex; align-items:flex-end; justify-content:center; opacity:0; pointer-events:none; transition:opacity 0.2s; }
+  .modal-overlay.open { opacity:1; pointer-events:all; }
+  .modal { background:var(--bg-card2); border:1px solid var(--border); border-radius:24px 24px 0 0; padding:28px 24px 40px; width:100%; max-width:540px; transform:translateY(40px); transition:transform 0.25s cubic-bezier(.22,1,.36,1); }
+  .modal-overlay.open .modal { transform:translateY(0); }
+  .modal-handle { width:40px; height:4px; background:var(--border); border-radius:99px; margin:0 auto 22px; }
+  .modal-title  { font-size:20px; font-weight:800; color:var(--gold); margin-bottom:20px; }
+  .modal-label  { font-size:13px; color:var(--text-muted); font-weight:600; margin-bottom:8px; display:block; }
+  .modal-input  { width:100%; background:var(--bg-deep); border:1px solid rgba(255,255,255,0.1); border-radius:var(--radius-sm); padding:14px 16px; font-family:'Tajawal',sans-serif; font-size:17px; font-weight:600; color:var(--text-main); outline:none; direction:auto; transition:border-color 0.15s,box-shadow 0.15s; }
+  html[dir="ltr"] .modal-input { text-align:left; }
+  html[dir="rtl"] .modal-input { text-align:right; }
+  .modal-input:focus { border-color:var(--gold); box-shadow:0 0 0 3px var(--gold-glow); }
+  .modal-actions { display:flex; gap:10px; margin-top:22px; }
+  .btn-confirm,.btn-cancel { flex:1; padding:15px; border-radius:var(--radius-sm); border:none; font-family:'Tajawal',sans-serif; font-size:16px; font-weight:700; cursor:pointer; transition:opacity 0.15s,transform 0.12s; }
+  .btn-confirm { background:linear-gradient(135deg,var(--grass-lite),var(--grass)); color:#fff; }
+  .btn-cancel  { background:rgba(255,255,255,0.07); color:var(--text-muted); }
+  .btn-confirm:active,.btn-cancel:active { transform:scale(0.97); }
+
+  /* ── TOAST ── */
+  .toast { position:fixed; top:20px; left:50%; transform:translateX(-50%) translateY(-80px); background:var(--bg-card2); border:1px solid var(--border); border-radius:50px; padding:12px 22px; font-size:14px; font-weight:600; color:var(--text-main); z-index:300; box-shadow:0 8px 24px rgba(0,0,0,0.4); transition:transform 0.3s cubic-bezier(.22,1,.36,1); white-space:nowrap; }
+  .toast.show { transform:translateX(-50%) translateY(0); }
+
+  @media(max-width:360px) {
+    .card-main-row,.col-labels { grid-template-columns:34px 1fr 76px 76px; gap:4px; }
+    .player-name { font-size:15px; }
+    .stat-value  { font-size:17px; }
+  }
+</style>
+</head>
+<body>
+
+<!-- Mode Banner: shown at top, changes based on online/offline -->
+<div class="mode-banner" id="modeBanner">
+  <span class="mode-dot"></span>
+  <span id="modeText">Checking connection...</span>
+</div>
+
+<header>
+  <span class="trophy-icon">🏆</span>
+  <h1 class="app-title" id="appTitle">World Cup Predictions</h1>
+  <p class="app-subtitle" id="appSubtitle">Track your friends' scores</p>
+  <div class="header-controls">
+    <div class="lang-toggle">
+      <button class="lang-btn active" id="btnEN" onclick="setLang('en')">EN</button>
+      <button class="lang-btn"        id="btnAR" onclick="setLang('ar')">ع</button>
+    </div>
+  </div>
+  <div class="sync-bar" id="syncBar" style="display:none">
+    <div class="sync-dot ok" id="syncDot"></div>
+    <span id="syncLabel"></span>
+  </div>
+  <div class="scoreboard-line"></div>
+</header>
+
+<main>
+  <div class="toolbar">
+    <button class="btn-undo" id="btnUndo" onclick="undo()" disabled>
+      <span>↩️</span><span id="btnUndoText">Undo</span>
+    </button>
+    <button class="btn-screenshot" onclick="takeScreenshot()">
+      <span>📸</span><span id="btnSsText">Screenshot</span>
+    </button>
+  </div>
+  <div class="col-labels" id="colLabels">
+    <span class="lbl-badge"></span>
+    <span class="lbl-name"  id="lblName">Player</span>
+    <span class="lbl-pts"   id="lblPts">Points</span>
+    <span class="lbl-guess" id="lblGuess">Guesses</span>
+  </div>
+  <div id="leaderboard"></div>
+</main>
+
+<button class="fab" id="fabBtn" onclick="openModal()">
+  <span>➕</span><span id="fabText">Add Player</span>
+</button>
+
+<div class="modal-overlay" id="modalOverlay" onclick="handleOverlayClick(event)">
+  <div class="modal">
+    <div class="modal-handle"></div>
+    <div class="modal-title" id="modalTitle">Add New Player</div>
+    <div style="margin-bottom:16px">
+      <label class="modal-label" id="modalLabel">Name</label>
+      <input class="modal-input" id="inputName" type="text" autocomplete="off">
+    </div>
+    <div class="modal-actions">
+      <button class="btn-confirm" onclick="savePlayer()" id="btnSave">Save ✓</button>
+      <button class="btn-cancel"  onclick="closeModal()" id="btnCancel">Cancel</button>
+    </div>
+  </div>
+</div>
+
+<div class="toast" id="toast"></div>
+<canvas id="screenshotCanvas" style="display:none"></canvas>
+
+<script>
+// ═══════════════════════════════════════════════════════════════════════════════
+// TRANSLATIONS
+// ═══════════════════════════════════════════════════════════════════════════════
+const T = {
+  en: {
+    dir:'ltr', htmlLang:'en',
+    appTitle:'World Cup Predictions', appSubtitle:"Track your friends' scores",
+    syncOk:'Synced with server', syncErr:'Server error ⚠️', syncing:'Syncing...',
+    modeOnline:'Online — synced across all devices',
+    modeOffline:'Offline — data saved on this device only',
+    btnSs:'Screenshot',
+    lblName:'Player', lblPts:'Points', lblGuess:'Guesses',
+    fabAdd:'Add Player',
+    modalAdd:'Add New Player', modalEdit:'Edit Name', modalLabel:'Name', modalPh:'Enter name...',
+    btnSave:'Save ✓', btnCancel:'Cancel',
+    btnEditName:'✏️ Edit Name', btnDelete:'🗑️ Delete',
+    emptyTitle:'No players yet', emptyBody:'Add your friends and start tracking!',
+    warnName:'⚠️ Please enter a valid name',
+    savedName:'✅ Name updated', addedPlayer:'✅ Player added', deletedPlayer:'🗑️ Player deleted',
+    deleteConfirm: name => `Delete "${name}"?`,
+    connErr:'⚠️ Could not reach server',
+    undoBtn:'Undo', undone:'↩️ Undone', nothingToUndo:'Nothing to undo',
+    screenshotSaved:'📸 Image saved!', noPlayers:'⚠️ No players to snapshot',
+    canvasTitle:'World Cup Predictions', canvasSub:'لوحة التوقعات',
+    canvasLblPts:'Points', canvasLblGs:'Guesses', canvasLblName:'Player', canvasLblRank:'#',
+    dateLocale:'en-GB',
+  },
+  ar: {
+    dir:'rtl', htmlLang:'ar',
+    appTitle:'لوحة التوقعات', appSubtitle:'تتبع نقاط الأصدقاء في كأس العالم',
+    syncOk:'متزامن مع الخادم', syncErr:'خطأ في الاتصال ⚠️', syncing:'جارٍ المزامنة...',
+    modeOnline:'متصل — البيانات تُزامن على جميع الأجهزة',
+    modeOffline:'غير متصل — البيانات محفوظة على هذا الجهاز فقط',
+    btnSs:'لقطة شاشة',
+    lblName:'اللاعب', lblPts:'النقاط', lblGuess:'التوقعات',
+    fabAdd:'إضافة لاعب',
+    modalAdd:'إضافة لاعب جديد', modalEdit:'تعديل الاسم', modalLabel:'الاسم', modalPh:'أدخل الاسم...',
+    btnSave:'حفظ ✓', btnCancel:'إلغاء',
+    btnEditName:'✏️ تعديل الاسم', btnDelete:'🗑️ حذف',
+    emptyTitle:'لا يوجد لاعبون بعد', emptyBody:'أضف أصدقاءك وابدأ التتبع!',
+    warnName:'⚠️ أدخل اسماً صحيحاً',
+    savedName:'✅ تم تعديل الاسم', addedPlayer:'✅ تمت إضافة اللاعب', deletedPlayer:'🗑️ تم حذف اللاعب',
+    deleteConfirm: name => `هل تريد حذف "${name}"؟`,
+    connErr:'⚠️ تعذّر الاتصال بالخادم',
+    undoBtn:'تراجع', undone:'↩️ تم التراجع', nothingToUndo:'لا يوجد ما يمكن التراجع عنه',
+    screenshotSaved:'📸 تم حفظ الصورة!', noPlayers:'⚠️ لا يوجد لاعبون',
+    canvasTitle:'لوحة التوقعات', canvasSub:'World Cup Predictions',
+    canvasLblPts:'النقاط', canvasLblGs:'التوقعات', canvasLblName:'اللاعب', canvasLblRank:'#',
+    dateLocale:'ar-SA',
+  }
+};
+
+// ═══════════════════════════════════════════════════════════════════════════════
+// MODE DETECTION  — online (server) vs offline (localStorage)
+// "online" = we can reach /api/players
+// "offline" = file:// protocol OR server unreachable
+// ═══════════════════════════════════════════════════════════════════════════════
+const LS_KEY = 'wcup_leaderboard_v1';
+let MODE     = 'detecting'; // 'online' | 'offline'
+
+async function detectMode() {
+  // file:// can never reach a server
+  if (location.protocol === 'file:') { setMode('offline'); return; }
+  try {
+    const r = await fetch('/api/players', { signal: AbortSignal.timeout(2000) });
+    if (r.ok) { setMode('online'); } else { setMode('offline'); }
+  } catch {
+    setMode('offline');
+  }
+}
+
+function setMode(m) {
+  MODE = m;
+  const t      = T[lang];
+  const banner = document.getElementById('modeBanner');
+  const mtext  = document.getElementById('modeText');
+  const syncBar= document.getElementById('syncBar');
+  if (m === 'online') {
+    banner.className = 'mode-banner online';
+    mtext.textContent = t.modeOnline;
+    syncBar.style.display = 'flex';
+  } else {
+    banner.className = 'mode-banner offline';
+    mtext.textContent = t.modeOffline;
+    syncBar.style.display = 'none';
+  }
+}
+
+// ═══════════════════════════════════════════════════════════════════════════════
+// STORAGE ADAPTERS
+// Both return the same shape so the rest of the app doesn't care which is used.
+// ═══════════════════════════════════════════════════════════════════════════════
+
+// ── localStorage adapter ──────────────────────────────────────────────────────
+const LS = {
+  load() {
+    try { return JSON.parse(localStorage.getItem(LS_KEY)) || []; } catch { return []; }
+  },
+  save(players) {
+    localStorage.setItem(LS_KEY, JSON.stringify(players));
+  },
+  async getAll()          { return this.load(); },
+  async add(id, name)     {
+    const p = this.load();
+    p.push({ id, name, points:0, guesses:0 });
+    this.save(p); return p;
+  },
+  async update(id, patch) {
+    const p = this.load().map(x => x.id===id ? {...x,...patch, points:Math.max(0,patch.points??x.points), guesses:Math.max(0,patch.guesses??x.guesses)} : x);
+    this.save(p); return p;
+  },
+  async remove(id)        {
+    const p = this.load().filter(x => x.id!==id);
+    this.save(p); return p;
+  },
+};
+
+// ── Server API adapter ────────────────────────────────────────────────────────
+const API = {
+  async _fetch(path, opts={}) {
+    setSyncDot('syncing');
+    const r = await fetch(path, { headers:{'Content-Type':'application/json'}, ...opts });
+    if (!r.ok) throw new Error(await r.text());
+    const json = await r.json();
+    setSyncDot('ok');
+    return json;
+  },
+  async getAll()          { const d = await this._fetch('/api/players'); return d; },
+  async add(id, name)     { const d = await this._fetch('/api/players',       {method:'POST',  body:JSON.stringify({id,name})}); return d.players; },
+  async update(id, patch) { const d = await this._fetch(`/api/players/${id}`, {method:'PATCH', body:JSON.stringify(patch)});     return d.players; },
+  async remove(id)        { const d = await this._fetch(`/api/players/${id}`, {method:'DELETE'});                                return d.players; },
+};
+
+function store() { return MODE === 'online' ? API : LS; }
+
+// ═══════════════════════════════════════════════════════════════════════════════
+// SYNC DOT (online mode only)
+// ═══════════════════════════════════════════════════════════════════════════════
+function setSyncDot(state) {
+  const t   = T[lang];
+  const dot = document.getElementById('syncDot');
+  const lbl = document.getElementById('syncLabel');
+  dot.className = `sync-dot ${state}`;
+  lbl.textContent = state==='ok' ? t.syncOk : state==='error' ? t.syncErr : t.syncing;
+}
+
+// ═══════════════════════════════════════════════════════════════════════════════
+// STATE
+// ═══════════════════════════════════════════════════════════════════════════════
+let players   = [];
+let editingId = null;
+let firstLoad = true;
+let lang      = localStorage.getItem('wcup_lang') || 'en';
+
+// ═══════════════════════════════════════════════════════════════════════════════
+// LANGUAGE
+// ═══════════════════════════════════════════════════════════════════════════════
+function setLang(l) {
+  lang = l;
+  localStorage.setItem('wcup_lang', l);
+  applyLang();
+  render(false);
+}
+
+function applyLang() {
+  const t   = T[lang];
+  const html = document.documentElement;
+  html.setAttribute('lang', t.htmlLang);
+  html.setAttribute('dir',  t.dir);
+  document.title = t.appTitle;
+  q('appTitle').textContent    = t.appTitle;
+  q('appSubtitle').textContent = t.appSubtitle;
+  q('btnSsText').textContent   = t.btnSs;
+  q('btnUndoText').textContent  = t.undoBtn;
+  q('lblName').textContent     = t.lblName;
+  q('lblPts').textContent      = t.lblPts;
+  q('lblGuess').textContent    = t.lblGuess;
+  q('fabText').textContent     = t.fabAdd;
+  q('modalLabel').textContent  = t.modalLabel;
+  q('inputName').placeholder   = t.modalPh;
+  q('btnSave').textContent     = t.btnSave;
+  q('btnCancel').textContent   = t.btnCancel;
+  q('btnEN').classList.toggle('active', lang==='en');
+  q('btnAR').classList.toggle('active', lang==='ar');
+  updateUndoBtn();
+  // re-apply mode banner text
+  if (MODE !== 'detecting') setMode(MODE);
+  if (MODE === 'online') setSyncDot('ok');
+}
+
+// ═══════════════════════════════════════════════════════════════════════════════
+// LOAD & MERGE
+// ═══════════════════════════════════════════════════════════════════════════════
+async function loadPlayers(silent=false) {
+  try {
+    const data = await store().getAll();
+    mergePlayers(data, silent);
+  } catch(e) {
+    if (MODE==='online') {
+      setSyncDot('error');
+      showToast(T[lang].connErr);
+    }
+  }
+}
+
+function mergePlayers(incoming, silent=false) {
+  const sorted = sortPlayers(incoming);
+  if (firstLoad || !silent) {
+    players = incoming; render(true); firstLoad = false; return;
+  }
+  const oldSorted = sortPlayers(players);
+  const orderChanged = oldSorted.length!==sorted.length || oldSorted.some((p,i)=>p.id!==sorted[i].id);
+  players = incoming;
+  if (orderChanged) { render(false); return; }
+  assignRanks(sorted).forEach(p => {
+    const card = document.querySelector(`.player-card[data-id="${p.id}"]`);
+    if (!card) return;
+    const inp = card.querySelector('.stat-input');
+    if (inp && inp.style.display!=='none') return;
+    const ptEl=card.querySelector('.stat-cell.points  .stat-value');
+    const gsEl=card.querySelector('.stat-cell.guesses .stat-value');
+    if(ptEl && ptEl.textContent!==String(p.points))  ptEl.textContent=p.points;
+    if(gsEl && gsEl.textContent!==String(p.guesses)) gsEl.textContent=p.guesses;
+  });
+}
+
+// ═══════════════════════════════════════════════════════════════════════════════
+// SORT & RANK
+// ═══════════════════════════════════════════════════════════════════════════════
+function sortPlayers(arr) {
+  return [...arr].sort((a,b)=>{
+    if(b.points!==a.points)   return b.points  - a.points;
+    if(b.guesses!==a.guesses) return b.guesses - a.guesses;
+    return String(a.name).localeCompare(String(b.name),['ar','en']);
+  });
+}
+function assignRanks(sorted) {
+  return sorted.map((p,i,arr)=>{
+    let rank;
+    if(i===0){rank=1;}
+    else{const prev=arr[i-1];rank=(p.points===prev.points&&p.guesses===prev.guesses)?prev._rank:prev._rankNext;}
+    p._rank=rank; p._rankNext=i+2; return p;
+  });
+}
+
+// ═══════════════════════════════════════════════════════════════════════════════
+// RENDER
+// ═══════════════════════════════════════════════════════════════════════════════
+function render(animate=true) {
+  const t  = T[lang];
+  const lb = document.getElementById('leaderboard');
+  lb.innerHTML = '';
+
+  if(!players.length){
+    lb.innerHTML=`<div class="empty-state">
+      <span class="empty-icon">⚽</span>
+      <div class="empty-title">${t.emptyTitle}</div>
+      <div class="empty-body">${t.emptyBody}</div>
+    </div>`;
+    return;
+  }
+
+  assignRanks(sortPlayers(players)).forEach((p,idx)=>{
+    const rank=p._rank;
+    const rc=rank===1?'r1':rank===2?'r2':rank===3?'r3':'rN';
+    const cc=rank===1?'rank-1':rank===2?'rank-2':rank===3?'rank-3':'';
+    const em=rank===1?'🥇':rank===2?'🥈':rank===3?'🥉':rank;
+    const card=document.createElement('div');
+    card.className=`player-card ${cc}${animate?' animate-in':''}`;
+    card.dataset.id=p.id;
+    if(animate) card.style.animationDelay=`${idx*0.04}s`;
+    card.innerHTML=`
+      <div class="card-main-row" onclick="toggleExpand('${p.id}')">
+        <div class="rank-badge ${rc}">${em}</div>
+        <div class="player-name">${esc(p.name)}</div>
+        <div class="stat-cell points" onclick="event.stopPropagation()">
+          <div class="stat-value" id="pv-${p.id}" onclick="startEdit('${p.id}','points')">${p.points}</div>
+          <input class="stat-input" id="pi-${p.id}" type="number" min="0"
+            onblur="commitEdit('${p.id}','points')" onkeydown="inputKey(event,'${p.id}','points')">
+          <div class="stat-controls">
+            <button class="btn-delta btn-minus" onclick="delta('${p.id}','points',-1)">−</button>
+            <button class="btn-delta btn-plus"  onclick="delta('${p.id}','points',+1)">+</button>
+          </div>
+        </div>
+        <div class="stat-cell guesses" onclick="event.stopPropagation()">
+          <div class="stat-value" id="gv-${p.id}" onclick="startEdit('${p.id}','guesses')">${p.guesses}</div>
+          <input class="stat-input" id="gi-${p.id}" type="number" min="0"
+            onblur="commitEdit('${p.id}','guesses')" onkeydown="inputKey(event,'${p.id}','guesses')">
+          <div class="stat-controls">
+            <button class="btn-delta btn-minus" onclick="delta('${p.id}','guesses',-1)">−</button>
+            <button class="btn-delta btn-plus"  onclick="delta('${p.id}','guesses',+1)">+</button>
+          </div>
+        </div>
+      </div>
+      <div class="card-actions">
+        <button class="btn-edit"   onclick="editPlayer('${p.id}')">${t.btnEditName}</button>
+        <button class="btn-delete" onclick="deletePlayer('${p.id}')">${t.btnDelete}</button>
+      </div>`;
+    lb.appendChild(card);
+  });
+}
+
+// ═══════════════════════════════════════════════════════════════════════════════
+// INLINE EDIT
+// ═══════════════════════════════════════════════════════════════════════════════
+function startEdit(id,field){
+  const pre=field==='points'?'p':'g';
+  const vEl=document.getElementById(`${pre}v-${id}`);
+  const iEl=document.getElementById(`${pre}i-${id}`);
+  const p=players.find(x=>x.id===id);
+  if(!p||!vEl||!iEl)return;
+  vEl.style.display='none'; iEl.style.display='inline-block';
+  iEl.value=p[field]; iEl.focus(); iEl.select();
+}
+function commitEdit(id,field){
+  const pre=field==='points'?'p':'g';
+  const vEl=document.getElementById(`${pre}v-${id}`);
+  const iEl=document.getElementById(`${pre}i-${id}`);
+  if(!vEl||!iEl)return;
+  const val=Math.max(0,parseInt(iEl.value,10)||0);
+  const p=players.find(x=>x.id===id);
+  if(p&&p[field]!==val){pushHistory(`edit ${field}`);p[field]=val;vEl.textContent=val;scheduleUpdate(id,field,val);}
+  iEl.style.display='none'; vEl.style.display='';
+}
+function inputKey(e,id,field){
+  if(e.key==='Enter') e.target.blur();
+  if(e.key==='Escape'){
+    const pre=field==='points'?'p':'g';
+    const vEl=document.getElementById(`${pre}v-${id}`);
+    const iEl=document.getElementById(`${pre}i-${id}`);
+    if(iEl)iEl.style.display='none'; if(vEl)vEl.style.display='';
+  }
+}
+
+// ═══════════════════════════════════════════════════════════════════════════════
+// UNDO HISTORY
+// Stores deep snapshots of `players` before every mutation.
+// Max 20 entries — oldest are dropped automatically.
+// ═══════════════════════════════════════════════════════════════════════════════
+const UNDO_MAX = 20;
+let undoStack  = [];  // array of {players: [...], description: string}
+
+function pushHistory(description='') {
+  // deep-clone current players array
+  undoStack.push({ players: JSON.parse(JSON.stringify(players)), description });
+  if (undoStack.length > UNDO_MAX) undoStack.shift();
+  updateUndoBtn();
+}
+
+function updateUndoBtn() {
+  const btn = document.getElementById('btnUndo');
+  if (btn) btn.disabled = (undoStack.length === 0);
+}
+
+async function undo() {
+  const t = T[lang];
+  if (!undoStack.length) { showToast(t.nothingToUndo); return; }
+  const snapshot = undoStack.pop();
+  updateUndoBtn();
+
+  // Apply snapshot: push each player's values to the store
+  // We do this by updating every player that differs, and restoring deleted ones
+  const prev = snapshot.players;
+
+  try {
+    // For each player in snapshot — restore name/points/guesses
+    for (const sp of prev) {
+      const cur = players.find(x => x.id === sp.id);
+      if (!cur) {
+        // player was deleted — re-add them
+        await store().add(sp.id, sp.name);
+        // then set their points/guesses if non-zero
+        if (sp.points || sp.guesses) await store().update(sp.id, { points: sp.points, guesses: sp.guesses });
+      } else if (cur.name !== sp.name || cur.points !== sp.points || cur.guesses !== sp.guesses) {
+        await store().update(sp.id, { name: sp.name, points: sp.points, guesses: sp.guesses });
+      }
+    }
+    // Remove players that were added after the snapshot
+    const snapIds = new Set(prev.map(x => x.id));
+    for (const cur of players) {
+      if (!snapIds.has(cur.id)) await store().remove(cur.id);
+    }
+    // Reload fresh state
+    const fresh = await store().getAll();
+    mergePlayers(fresh, false);
+    showToast(t.undone);
+  } catch(e) {
+    if (MODE === 'online') { setSyncDot('error'); showToast(T[lang].connErr); }
+  }
+}
+
+// ═══════════════════════════════════════════════════════════════════════════════
+// DELTA
+// ═══════════════════════════════════════════════════════════════════════════════
+function delta(id,field,val){
+  const p=players.find(x=>x.id===id); if(!p)return;
+  pushHistory(`delta ${field}`);
+  p[field]=Math.max(0,(p[field]||0)+val);
+  const pre=field==='points'?'p':'g';
+  const vEl=document.getElementById(`${pre}v-${id}`);
+  if(vEl)vEl.textContent=p[field];
+  scheduleUpdate(id,field,p[field]);
+  const card=document.querySelector(`[data-id="${id}"]`);
+  if(card)card.classList.add('expanded');
+}
+const dTimers={};
+function scheduleUpdate(id,field,value){
+  const k=id+field; clearTimeout(dTimers[k]);
+  dTimers[k]=setTimeout(async()=>{
+    try{
+      const updated=await store().update(id,{[field]:value});
+      if(updated) mergePlayers(updated,true);
+    }catch(e){
+      if(MODE==='online'){setSyncDot('error');showToast(T[lang].connErr);}
+    }
+  },600);
+}
+
+// ═══════════════════════════════════════════════════════════════════════════════
+// EXPAND
+// ═══════════════════════════════════════════════════════════════════════════════
+function toggleExpand(id){
+  const card=document.querySelector(`[data-id="${id}"]`); if(!card)return;
+  const was=card.classList.contains('expanded');
+  document.querySelectorAll('.player-card.expanded').forEach(c=>c.classList.remove('expanded'));
+  if(!was)card.classList.add('expanded');
+}
+
+// ═══════════════════════════════════════════════════════════════════════════════
+// MODAL
+// ═══════════════════════════════════════════════════════════════════════════════
+function openModal(id){
+  const t=T[lang]; editingId=id||null;
+  q('modalTitle').textContent=id?t.modalEdit:t.modalAdd;
+  q('inputName').value=id?(players.find(p=>p.id===id)?.name||''):'';
+  document.getElementById('modalOverlay').classList.add('open');
+  setTimeout(()=>q('inputName').focus(),350);
+}
+function closeModal(){document.getElementById('modalOverlay').classList.remove('open');editingId=null;}
+function handleOverlayClick(e){if(e.target===document.getElementById('modalOverlay'))closeModal();}
+async function savePlayer(){
+  const t=T[lang];
+  const name=q('inputName').value.trim();
+  if(!name){showToast(t.warnName);return;}
+  closeModal();
+  try{
+    let updated;
+    if(editingId){pushHistory('edit name');updated=await store().update(editingId,{name});showToast(t.savedName, true);}
+    else         {pushHistory('add player');updated=await store().add(uid(),name);showToast(t.addedPlayer, true);}
+    if(updated)mergePlayers(updated,false);
+  }catch(e){
+    if(MODE==='online'){setSyncDot('error');showToast(T[lang].connErr);}
+  }
+}
+function editPlayer(id){openModal(id);}
+async function deletePlayer(id){
+  const t=T[lang];
+  const p=players.find(x=>x.id===id); if(!p)return;
+  if(!confirm(t.deleteConfirm(p.name)))return;
+  try{
+    pushHistory('delete player');
+    const updated=await store().remove(id);
+    if(updated)mergePlayers(updated,false);
+    showToast(t.deletedPlayer, true);
+  }catch(e){
+    if(MODE==='online'){setSyncDot('error');showToast(T[lang].connErr);}
+  }
+}
+
+// ═══════════════════════════════════════════════════════════════════════════════
+// SCREENSHOT  — 2000×2000, direction-aware
+// ═══════════════════════════════════════════════════════════════════════════════
+async function takeScreenshot(){
+  await document.fonts.ready;
+  const t=T[lang], isRTL=(t.dir==='rtl');
+  const sorted=sortPlayers(players), ranked=assignRanks(sorted), n=ranked.length;
+  if(!n){showToast(t.noPlayers);return;}
+
+  const SZ=2000;
+  const canvas=document.getElementById('screenshotCanvas');
+  canvas.width=SZ; canvas.height=SZ;
+  const ctx=canvas.getContext('2d');
+
+  const PAD=80, HDR_H=340, FTR_H=90;
+  const ROW_H=Math.max(80,Math.min(140,Math.floor((SZ-HDR_H-FTR_H)/n)));
+
+  // Column positions — LTR: badge-left, guesses/points-right; RTL: flipped
+  const BADGE_X    = isRTL ? SZ-PAD-44   : PAD+44;
+  const GUESS_X    = isRTL ? PAD+140     : SZ-PAD-140;
+  const POINT_X    = isRTL ? PAD+280     : SZ-PAD-280;
+  const NAME_ANCHOR= isRTL ? SZ-PAD-100  : PAD+100;
+  const NAME_ALIGN = isRTL ? 'right'     : 'left';
+  const NAME_MAX_W = isRTL ? (NAME_ANCHOR-POINT_X-40) : (POINT_X-NAME_ANCHOR-40);
+
+  // BG
+  const bgG=ctx.createLinearGradient(0,0,0,SZ);
+  bgG.addColorStop(0,'#080d18');bgG.addColorStop(0.35,'#071510');bgG.addColorStop(1,'#06090f');
+  ctx.fillStyle=bgG;ctx.fillRect(0,0,SZ,SZ);
+  const tg=ctx.createRadialGradient(SZ/2,0,50,SZ/2,0,SZ*.65);
+  tg.addColorStop(0,'rgba(26,71,42,0.55)');tg.addColorStop(1,'transparent');
+  ctx.fillStyle=tg;ctx.fillRect(0,0,SZ,SZ);
+  const bg2=ctx.createRadialGradient(SZ*.15,SZ,10,SZ*.15,SZ,SZ*.5);
+  bg2.addColorStop(0,'rgba(245,197,24,0.07)');bg2.addColorStop(1,'transparent');
+  ctx.fillStyle=bg2;ctx.fillRect(0,0,SZ,SZ);
+  ctx.strokeStyle='rgba(255,255,255,0.025)';ctx.lineWidth=1;
+  for(let x=PAD;x<SZ-PAD;x+=120){ctx.beginPath();ctx.moveTo(x,0);ctx.lineTo(x,SZ);ctx.stroke();}
+
+  // Header
+  ctx.font='120px serif';ctx.textAlign='center';ctx.fillText('🏆',SZ/2,148);
+  const tg2=ctx.createLinearGradient(SZ*.2,0,SZ*.8,0);
+  tg2.addColorStop(0,'#b8920f');tg2.addColorStop(.5,'#ffe566');tg2.addColorStop(1,'#b8920f');
+  ctx.fillStyle=tg2;ctx.font='bold 72px Tajawal,Arial';ctx.fillText(t.canvasTitle,SZ/2,232);
+  ctx.font='500 34px Tajawal,Arial';ctx.fillStyle='#5a6480';ctx.fillText(t.canvasSub,SZ/2,282);
+  const dg=ctx.createLinearGradient(0,0,SZ,0);
+  dg.addColorStop(0,'transparent');dg.addColorStop(.2,'#1a472a');dg.addColorStop(.5,'#f5c518');dg.addColorStop(.8,'#1a472a');dg.addColorStop(1,'transparent');
+  ctx.strokeStyle=dg;ctx.lineWidth=3;ctx.beginPath();ctx.moveTo(PAD,310);ctx.lineTo(SZ-PAD,310);ctx.stroke();
+
+  // Column labels
+  const LY=HDR_H-10;
+  ctx.font='bold 28px Tajawal,Arial';ctx.fillStyle='#3a4460';
+  ctx.textAlign='center';ctx.fillText(t.canvasLblGs,GUESS_X,LY);ctx.fillText(t.canvasLblPts,POINT_X,LY);
+  ctx.textAlign=NAME_ALIGN;ctx.fillText(t.canvasLblName,NAME_ANCHOR,LY);
+  ctx.textAlign='center';ctx.fillText(t.canvasLblRank,BADGE_X,LY);
+  ctx.strokeStyle='rgba(255,255,255,0.06)';ctx.lineWidth=1;
+  ctx.beginPath();ctx.moveTo(PAD,HDR_H+4);ctx.lineTo(SZ-PAD,HDR_H+4);ctx.stroke();
+
+  // Rows
+  ranked.forEach((p,idx)=>{
+    const y=HDR_H+idx*ROW_H,cy=y+ROW_H/2,rank=p._rank;
+    if(idx%2===0){ctx.fillStyle='rgba(255,255,255,0.025)';ctx.fillRect(PAD,y+3,SZ-PAD*2,ROW_H-4);}
+    if(rank===1){
+      const rg=ctx.createLinearGradient(isRTL?SZ-PAD:PAD,y,isRTL?PAD:SZ-PAD,y);
+      rg.addColorStop(0,'rgba(245,197,24,0.14)');rg.addColorStop(1,'transparent');
+      ctx.fillStyle=rg;ctx.fillRect(PAD,y+3,SZ-PAD*2,ROW_H-4);
+    }
+    const BR=ROW_H*.32;
+    ctx.beginPath();ctx.arc(BADGE_X,cy,BR,0,Math.PI*2);
+    if(rank===1){const g=ctx.createRadialGradient(BADGE_X-BR*.3,cy-BR*.3,2,BADGE_X,cy,BR);g.addColorStop(0,'#ffe566');g.addColorStop(1,'#a07a0a');ctx.fillStyle=g;}
+    else if(rank===2){const g=ctx.createRadialGradient(BADGE_X-BR*.3,cy-BR*.3,2,BADGE_X,cy,BR);g.addColorStop(0,'#d8e0ee');g.addColorStop(1,'#606878');ctx.fillStyle=g;}
+    else if(rank===3){const g=ctx.createRadialGradient(BADGE_X-BR*.3,cy-BR*.3,2,BADGE_X,cy,BR);g.addColorStop(0,'#e8a060');g.addColorStop(1,'#7a4010');ctx.fillStyle=g;}
+    else ctx.fillStyle='#10182a';
+    ctx.fill();
+    ctx.strokeStyle=rank===1?'rgba(245,197,24,0.5)':rank===2?'rgba(192,202,216,0.4)':rank===3?'rgba(205,127,50,0.4)':'rgba(255,255,255,0.06)';
+    ctx.lineWidth=2;ctx.stroke();
+    const BFS=Math.round(BR*1.1);ctx.textAlign='center';
+    if(rank<=3){ctx.font=`${BFS}px serif`;ctx.fillText(rank===1?'🥇':rank===2?'🥈':'🥉',BADGE_X,cy+BFS*.35);}
+    else{ctx.font=`bold ${BFS}px Tajawal,Arial`;ctx.fillStyle='#5a6480';ctx.fillText(rank,BADGE_X,cy+BFS*.35);}
+    const NFS=Math.round(ROW_H*.36);
+    ctx.font=`bold ${NFS}px Tajawal,Arial`;
+    ctx.fillStyle=rank===1?'#f5c518':rank<=3?'#e8eaf0':'#c8cad8';
+    ctx.textAlign=NAME_ALIGN;
+    let dn=p.name;
+    while(ctx.measureText(dn).width>NAME_MAX_W&&dn.length>1)dn=dn.slice(0,-1);
+    if(dn!==p.name)dn=dn.slice(0,-1)+'…';
+    ctx.fillText(dn,NAME_ANCHOR,cy+NFS*.35);
+    const SFS=Math.round(ROW_H*.42);
+    ctx.textAlign='center';ctx.font=`bold ${SFS}px Tajawal,Arial`;
+    ctx.fillStyle='#f5c518';ctx.fillText(p.points,POINT_X,cy+SFS*.35);
+    ctx.fillStyle='#00d4ff';ctx.fillText(p.guesses,GUESS_X,cy+SFS*.35);
+    ctx.strokeStyle='rgba(255,255,255,0.04)';ctx.lineWidth=1;
+    ctx.beginPath();ctx.moveTo(PAD,y+ROW_H);ctx.lineTo(SZ-PAD,y+ROW_H);ctx.stroke();
+  });
+
+  // Footer
+  const FY=SZ-FTR_H+20;
+  const fg=ctx.createLinearGradient(0,0,SZ,0);
+  fg.addColorStop(0,'transparent');fg.addColorStop(.3,'#1a472a');fg.addColorStop(.5,'#2d5030');fg.addColorStop(.7,'#1a472a');fg.addColorStop(1,'transparent');
+  ctx.strokeStyle=fg;ctx.lineWidth=2;ctx.beginPath();ctx.moveTo(PAD,FY-10);ctx.lineTo(SZ-PAD,FY-10);ctx.stroke();
+  ctx.textAlign='center';ctx.font='28px Tajawal,Arial';ctx.fillStyle='#3a4460';
+  ctx.fillText(new Date().toLocaleDateString(t.dateLocale,{weekday:'long',day:'numeric',month:'long',year:'numeric'}),SZ/2,FY+26);
+  ctx.font='36px serif';ctx.fillText('⚽',PAD+30,FY+30);ctx.fillText('⚽',SZ-PAD-30,FY+30);
+
+  const link=document.createElement('a');
+  link.download=`leaderboard-${Date.now()}.png`;
+  link.href=canvas.toDataURL('image/png');
+  link.click();
+  showToast(t.screenshotSaved);
+}
+
+// ═══════════════════════════════════════════════════════════════════════════════
+// TOAST & UTILS
+// ═══════════════════════════════════════════════════════════════════════════════
+let toastTimer;
+function showToast(msg, withUndo=false){
+  const t=document.getElementById('toast');
+  if(withUndo && undoStack.length){
+    const undoLabel=T[lang].undoBtn;
+    t.innerHTML=esc(msg)+`<span class="toast-undo" onclick="undo()">${undoLabel}</span>`;
+  } else {
+    t.textContent=msg;
+  }
+  t.classList.add('show');
+  clearTimeout(toastTimer);toastTimer=setTimeout(()=>t.classList.remove('show'),3500);
+}
+function q(id){return document.getElementById(id);}
+function uid(){return Date.now().toString(36)+Math.random().toString(36).slice(2,6);}
+function esc(s){return String(s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');}
+
+document.getElementById('inputName').addEventListener('keydown',e=>{
+  if(e.key==='Enter')savePlayer();
+  if(e.key==='Escape')closeModal();
+});
+
+// ═══════════════════════════════════════════════════════════════════════════════
+// INIT
+// ═══════════════════════════════════════════════════════════════════════════════
+async function init(){
+  applyLang();
+  await detectMode();
+  await loadPlayers(false);
+  // background poll — only in online mode (offline has no external changes)
+  setInterval(async()=>{
+    if(MODE==='online') await loadPlayers(true);
+  },15000);
+}
+
+init();
+</script>
+</body>
+</html>

@@ -1,0 +1,15 @@
+{
+  "name": "worldcup-predictor-league",
+  "version": "1.0.0",
+  "description": "A beautiful local leaderboard for tracking World Cup prediction scores with friends. Works offline (localStorage) and online (SQLite server synced across devices).",
+  "main": "server.js",
+  "scripts": {
+    "start": "node server.js"
+  },
+  "keywords": ["world-cup", "leaderboard", "predictions", "soccer", "football", "arabic"],
+  "license": "MIT",
+  "dependencies": {
+    "express": "^4.18.2",
+    "sql.js": "^1.10.2"
+  }
+}
