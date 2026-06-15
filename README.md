@@ -1,3 +1,5 @@
+(Me and my friends like to have competitions, and since the FIFA World Cup 2026 is happening, we wanted to have a league with points of who's the best one to predict the results of the world cup matches, this repo was very helpful for me to keep track of their points, I hope it helps you for something)
+
 # 🏆 World Cup Predictor League
 
 A sleek, mobile-first leaderboard for tracking World Cup prediction scores with friends. Supports Arabic and English, works offline and on your local network.
