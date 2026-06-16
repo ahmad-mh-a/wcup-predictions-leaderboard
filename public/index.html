@@ -645,7 +645,7 @@ function delta(id,field,val){
   p[field]=Math.max(0,(p[field]||0)+val);
   const pre=field==='points'?'p':'g';
   const vEl=document.getElementById(`${pre}v-${id}`);
-  if(vEl)vEl.textContent=p[field];
+  if(vEl)render(false);
   scheduleUpdate(id,field,p[field]);
   const card=document.querySelector(`[data-id="${id}"]`);
   if(card)card.classList.add('expanded');
@@ -656,7 +656,7 @@ function scheduleUpdate(id,field,value){
   dTimers[k]=setTimeout(async()=>{
     try{
       const updated=await store().update(id,{[field]:value});
-      if(updated) mergePlayers(updated,true);
+      if(updated) mergePlayers(updated,false);
     }catch(e){
       if(MODE==='online'){setSyncDot('error');showToast(T[lang].connErr);}
     }
