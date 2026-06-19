@@ -477,7 +477,7 @@ function mergePlayers(incoming, silent=false) {
 function sortPlayers(arr) {
   return [...arr].sort((a,b)=>{
     if(b.points!==a.points)   return b.points  - a.points;
-    if(b.guesses!==a.guesses) return b.guesses - a.guesses;
+    if(a.guesses!==b.guesses) return a.guesses - b.guesses;
     return String(a.name).localeCompare(String(b.name),['ar','en']);
   });
 }
