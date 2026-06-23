@@ -7,6 +7,17 @@ const PORT = 3000;
 const DB_PATH = path.join(__dirname, 'data', 'leaderboard.db');
 
 app.use(express.json());
+app.use((req, res, next) => {
+  const ip    = req.headers['x-forwarded-for'] || req.socket.remoteAddress;
+  const start = Date.now();
+  res.on('finish', () => {
+    const now = new Date();
+    const pad = n => String(n).padStart(2, '0');
+    const date = `${pad(now.getDate())}/${now.toLocaleString('en',{month:'short'})}/${now.getFullYear()} ${pad(now.getHours())}:${pad(now.getMinutes())}:${pad(now.getSeconds())}`;
+    console.log(`${ip} - - [${date}] "${req.method} ${req.url} HTTP/${req.httpVersion}" ${res.statusCode} ${Date.now()-start}ms`);
+  });
+  next();
+});
 app.use(express.static(path.join(__dirname, 'public')));
 
 // ── INIT SQL.JS ───────────────────────────────────────────────────────────────
