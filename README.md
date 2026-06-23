@@ -95,7 +95,7 @@ The app auto-detects which mode to use. A banner at the top tells you which mode
 
 Players are sorted by:
 1. **Points** (higher = better)
-2. **Guesses** (more = better, as a tiebreaker)
+2. **Guesses** (less = better, as a tiebreaker)
 3. **Name** (alphabetical, Arabic/English aware)
 
 Ties are handled correctly — two players with the same points AND guesses share the same rank number, and the next rank skips accordingly (e.g. 1, 2, 2, 4).
